@@ -1,29 +1,26 @@
 ---
-  - name: install Database server
-    hosts: dev
-    become: true
-    gather_facts: false
+- name: Configure Database
+  hosts: balancer
+  become: true
+  gather_facts: true
 
+  vars_files:
+    - vars/db.yml
 
-    vars_files:
-      - vars/db.yml
+  tasks:
+    - name: Install MariaDB server
+      ansible.builtin.yum:
+        name: mariadb-server
+        state: present
+        update_cache: yes
 
+    - name: Ensure MariaDB service is running and enabled
+      ansible.builtin.service:
+        name: mariadb
+        state: started
+        enabled: yes
 
-    tasks:
-       - name: install MariaDB
-         ansible.builtin.yum:
-            name: mariadb
-            state: present
-            update_cache: yes
-
-       - name: Check if Mariadb is running and enabled
-         ansible.builtin.service:
-             name: mariadb
-             state: started
-             enabled: yes
-
-        
-    - name: Ensure MariaDB Python bindings are installed (for future tasks)
+    - name: Ensure MariaDB Python bindings are installed
       ansible.builtin.yum:
         name: python3-PyMySQL
         state: present
@@ -32,7 +29,8 @@
       community.mysql.mysql_db:
         name: "{{ DB_name }}"
         state: present
-        login_user: root
+        login_user: root4
+        login_unix_socket: /var/lib/mysql/mysql.sock
 
     - name: Create MariaDB user
       community.mysql.mysql_user:
@@ -40,4 +38,5 @@
         password: "{{ DB_pass }}"
         priv: "{{ DB_name }}.*:ALL"
         state: present
-        login_user: root 
+        login_user: root
+        login_unix_socket: /var/lib/mysql/mysql.sock
