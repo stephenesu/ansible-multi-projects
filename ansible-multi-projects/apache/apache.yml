@@ -1,0 +1,50 @@
+---
+  - name: configure webserver
+    hosts: dev
+    become: true
+    gather_facts: false
+    
+    vars_files:
+      - vars/main.yml
+    
+
+    tasks:
+      - name: install apache webserver
+        ansible.builtin.yum:
+           name: "{{ web_package }}"
+           state: present
+           update_cache: yes
+
+      - name: check if httpd is running
+        ansible.builtin.service:
+           name: "{{ web_service }}"
+           state: started
+           enabled: yes
+
+      - name: check if the root directory is present
+        ansible.builtin.file:
+            path: "{{ document_root }}"
+            state: directory
+            mode: "0755" 
+
+      - name: Copy the web application archive to the remote server
+        ansible.builtin.copy:
+            src: files/templatemo_594_nexus_flow.zip
+            dest: /tmp/templatemo_594_nexus_flow.zip
+            mode: '0644'
+
+      - name: Unzip the archive to the web root
+        ansible.builtin.unarchive:
+            src: /tmp/templatemo_594_nexus_flow.zip
+            dest: /tmp/
+            remote_src: true
+        notify: restart httpd
+      
+      - name: Move contents (not folder) to web root
+        ansible.builtin.shell: mv /tmp/templatemo_594_nexus_flow/* /var/www/html/
+
+    handlers:
+      - name: restart httpd
+        service:
+           name: httpd
+           state: restarted
